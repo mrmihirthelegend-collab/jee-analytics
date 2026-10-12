@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Mains Test Analytics Dashboard - Multi-Report Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-chart-line text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Spectrum <span class="text-xs uppercase bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/30">Multi-Test Tracker</span>
+                    </h1>
+                    <p class="text-xs text-slate-400" id="headerSubtitle">Batch: 10N | Total Tests Loaded: 1</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="openImportModal()" class="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition border border-slate-600 shadow-sm">
+                    <i class="fa-solid fa-file-arrow-up text-indigo-400"></i> Import Test Report
+                </button>
+                <button onclick="exportDataJSON()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-lg shadow-indigo-600/20">
+                    <i class="fa-solid fa-download"></i> Export Session
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+
+        <!-- Report / View Mode Switcher -->
+        <div class="flex flex-col md:flex-row justify-between items-center bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 gap-4 backdrop-blur">
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i> Active View:</span>
+                
+                <!-- Report Selector Dropdown -->
+                <select id="reportSelector" onchange="handleReportSelectionChange(this.value)" class="bg-slate-900 border border-slate-700 text-white text-xs font-medium rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 transition shadow-sm">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+
+            <div class="text-xs text-slate-400 flex items-center gap-2" id="testsLoadedCounter">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span> Viewing: <span class="text-white font-semibold" id="activeReportLabel">Test Date 12/07/2026</span>
+            </div>
+        </div>
+
+        <!-- Summary Metrics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-5 shadow-sm backdrop-blur">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Students</span>
+                    <span class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400"><i class="fa-solid fa-users text-lg"></i></span>
+                </div>
+                <div class="mt-3 flex items-baseline gap-2">
+                    <span id="metricTotalStudents" class="text-3xl font-extrabold text-white">0</span>
+                    <span class="text-xs text-slate-400">Registered</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-5 shadow-sm backdrop-blur">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Batch Average</span>
+                    <span class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-calculator text-lg"></i></span>
+                </div>
+                <div class="mt-3 flex items-baseline gap-2">
+                    <span id="metricBatchAvg" class="text-3xl font-extrabold text-white">0.0</span>
+                    <span class="text-xs text-slate-400">/ 300</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-5 shadow-sm backdrop-blur">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Highest Score</span>
+                    <span class="p-2 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-trophy text-lg"></i></span>
+                </div>
+                <div class="mt-3 flex items-baseline gap-2">
+                    <span id="metricHighestScore" class="text-3xl font-extrabold text-amber-400">0</span>
+                    <span class="text-xs text-slate-400">/ 300</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-5 shadow-sm backdrop-blur">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Attendance Rate</span>
+                    <span class="p-2 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-user-check text-lg"></i></span>
+                </div>
+                <div class="mt-3 flex items-baseline gap-2">
+                    <span id="metricAttendance" class="text-3xl font-extrabold text-white">0/0</span>
+                    <span id="metricAttendancePct" class="text-xs text-emerald-400 font-medium">0%</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-5 shadow-sm backdrop-blur">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Study Center</span>
+                    <span class="p-2 rounded-lg bg-purple-500/10 text-purple-400"><i class="fa-solid fa-building-columns text-lg"></i></span>
+                </div>
+                <div class="mt-3">
+                    <span class="text-lg font-bold text-white truncate block">Vasant Mkt</span>
+                    <span class="text-xs text-slate-400">Contact: 89567 14663</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Visualizations -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 shadow-sm backdrop-blur flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-bar text-indigo-400"></i> Score Range Distribution
+                    </h2>
+                    <span class="text-xs text-slate-400 bg-slate-700/50 px-2 py-1 rounded">Batch 10N</span>
+                </div>
+                <div class="relative h-64 w-full">
+                    <canvas id="scoreDistributionChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 shadow-sm backdrop-blur flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass text-indigo-400"></i> Student Inspector
+                    </h2>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Select Student ID</label>
+                        <select id="studentSelect" onchange="inspectStudent(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
+                            <option value="">-- Choose student ID --</option>
+                        </select>
+                    </div>
+
+                    <div id="studentCardDetails" class="bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 space-y-3 min-h-[170px] flex flex-col justify-center">
+                        <div class="text-center text-slate-500 text-sm">
+                            <i class="fa-solid fa-user-graduate text-2xl mb-2 block opacity-40"></i>
+                            Select a student to view sectional scores.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboards Section -->
+        <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl shadow-sm backdrop-blur overflow-hidden">
+            <div class="p-4 sm:p-6 border-b border-slate-700/80 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex flex-wrap items-center gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-slate-700/50 w-full md:w-auto">
+                    <button onclick="switchTab('overall')" id="tab-overall" class="leaderboard-tab flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition bg-indigo-600 text-white shadow">
+                        <i class="fa-solid fa-medal mr-1.5"></i> Overall Leaderboard
+                    </button>
+                    <button onclick="switchTab('physics')" id="tab-physics" class="leaderboard-tab flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-atom mr-1.5"></i> Physics
+                    </button>
+                    <button onclick="switchTab('chemistry')" id="tab-chemistry" class="leaderboard-tab flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-flask mr-1.5"></i> Chemistry
+                    </button>
+                    <button onclick="switchTab('math')" id="tab-math" class="leaderboard-tab flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-square-root-variable mr-1.5"></i> Mathematics
+                    </button>
+                </div>
+
+                <div class="relative w-full md:w-72">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-search"></i>
+                    </span>
+                    <input type="text" id="searchInput" oninput="filterTable()" placeholder="Search Student ID..." class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table id="leaderboardTable" class="w-full text-left border-collapse">
+                    <thead>
+                        <tr id="tableHeaderRow" class="bg-slate-900/50 border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider">
+                            <!-- Populated dynamically -->
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-700/60 text-sm text-slate-300">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="absenteesFooter" class="px-6 py-4 bg-slate-900/30 border-t border-slate-700/60 text-xs text-slate-400 flex items-center gap-2" style="display:none;"></div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800/40 border-t border-slate-700 mt-12 py-6 text-center text-xs text-slate-500">
+        Spectrum Gateway to Success &bull; JEE Mains Multi-Report Analytics Tracker
+    </footer>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-code text-indigo-400"></i> Import Test Report Data (JSON)
+                </h3>
+                <button onclick="closeImportModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-400">
+                Paste the JSON report for another test in the exact same format. The system will add it to historical archives so you can view it individually or in cumulative averages.
+            </p>
+            <textarea id="jsonInputBox" rows="10" class="w-full bg-slate-900 font-mono text-xs border border-slate-700 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-indigo-500"></textarea>
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeImportModal()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition">Cancel</button>
+                <button onclick="applyImportedJSON()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition shadow-lg shadow-indigo-600/20">Append Test Report</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Multi-test session storage holding array of test reports
+        let testSession = {
+            reports: [
+                {
+                    batch: "10N",
+                    date: "12/07/2026",
+                    students: [
+                        { stuid: "NC256003", status: "P", physics: { total: 96 }, chemistry: { total: 75 }, math: { total: 56 }, totalScore: 227, rank: 1 },
+                        { stuid: "NC256027", status: "P", physics: { total: 65 }, chemistry: { total: 96 }, math: { total: 58 }, totalScore: 219, rank: 2 },
+                        { stuid: "NC256028", status: "P", physics: { total: 87 }, chemistry: { total: 70 }, math: { total: 39 }, totalScore: 196, rank: 3 },
+                        { stuid: "NC256004", status: "P", physics: { total: 48 }, chemistry: { total: 58 }, math: { total: 72 }, totalScore: 178, rank: 4 },
+                        { stuid: "NC256018", status: "P", physics: { total: 55 }, chemistry: { total: 86 }, math: { total: 36 }, totalScore: 177, rank: 5 },
+                        { stuid: "NC256036", status: "P", physics: { total: 64 }, chemistry: { total: 52 }, math: { total: 27 }, totalScore: 143, rank: 6 },
+                        { stuid: "NC256042", status: "P", physics: { total: 60 }, chemistry: { total: 56 }, math: { total: 18 }, totalScore: 134, rank: 7 },
+                        { stuid: "NC256051", status: "P", physics: { total: 36 }, chemistry: { total: 49 }, math: { total: 34 }, totalScore: 119, rank: 8 },
+                        { stuid: "NC256054", status: "P", physics: { total: 56 }, chemistry: { total: 46 }, math: { total: 16 }, totalScore: 118, rank: 9 },
+                        { stuid: "NC244508", status: "P", physics: { total: 34 }, chemistry: { total: 65 }, math: { total: 17 }, totalScore: 116, rank: 10 },
+                        { stuid: "NC256049", status: "P", physics: { total: 52 }, chemistry: { total: 53 }, math: { total: 7 }, totalScore: 112, rank: 11 },
+                        { stuid: "NC256017", status: "P", physics: { total: 48 }, chemistry: { total: 23 }, math: { total: 29 }, totalScore: 100, rank: 12 },
+                        { stuid: "NC244556", status: "P", physics: { total: 47 }, chemistry: { total: 34 }, math: { total: 11 }, totalScore: 97, rank: 13 },
+                        { stuid: "NC244534", status: "P", physics: { total: 29 }, chemistry: { total: 45 }, math: { total: 21 }, totalScore: 95, rank: 14 },
+                        { stuid: "NC256032", status: "P", physics: { total: 49 }, chemistry: { total: 34 }, math: { total: 12 }, totalScore: 95, rank: 14 },
+                        { stuid: "NC256001", status: "P", physics: { total: 29 }, chemistry: { total: 48 }, math: { total: 11 }, totalScore: 88, rank: 16 },
+                        { stuid: "NC256063", status: "P", physics: { total: 52 }, chemistry: { total: 17 }, math: { total: 17 }, totalScore: 86, rank: 17 },
+                        { stuid: "NC256060", status: "P", physics: { total: 30 }, chemistry: { total: 39 }, math: { total: 10 }, totalScore: 79, rank: 18 },
+                        { stuid: "NC244527", status: "P", physics: { total: 33 }, chemistry: { total: 35 }, math: { total: 10 }, totalScore: 78, rank: 19 },
+                        { stuid: "NC256005", status: "P", physics: { total: 14 }, chemistry: { total: 23 }, math: { total: 15 }, totalScore: 52, rank: 20 },
+                        { stuid: "NC256050", status: "P", physics: { total: 16 }, chemistry: { total: 27 }, math: { total: 10 }, totalScore: 53, rank: 21 },
+                        { stuid: "NC256035", status: "A", physics: { total: 0 }, chemistry: { total: 0 }, math: { total: 0 }, totalScore: 0, rank: null },
+                        { stuid: "NC256007", status: "A", physics: { total: 0 }, chemistry: { total: 0 }, math: { total: 0 }, totalScore: 0, rank: null },
+                        { stuid: "NC256043", status: "A", physics: { total: 0 }, chemistry: { total: 0 }, math: { total: 0 }, totalScore: 0, rank: null },
+                        { stuid: "NC256037", status: "A", physics: { total: 0 }, chemistry: { total: 0 }, math: { total: 0 }, totalScore: 0, rank: null },
+                        { stuid: "NC256041", status: "A", physics: { total: 0 }, chemistry: { total: 0 }, math: { total: 0 }, totalScore: 0, rank: null },
+                        { stuid: "NC256033", status: "A", physics: { total: 0 }, chemistry: { total: 0 }, math: { total: 0 }, totalScore: 0, rank: null },
+                        { stuid: "NC256006", status: "A", physics: { total: 0 }, chemistry: { total: 0 }, math: { total: 0 }, totalScore: 0, rank: null },
+                        { stuid: "NC256048", status: "A", physics: { total: 0 }, chemistry: { total: 0 }, math: { total: 0 }, totalScore: 0, rank: null }
+                    ]
+                }
+            ]
+        };
+
+        let selectedViewIndex = 'cumulative'; // 'cumulative' or integer index
+        let currentActiveTab = 'overall';
+        let distChartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateReportDropdownOptions();
+            initDashboard();
+        });
+
+        function updateReportDropdownOptions() {
+            const dropdown = document.getElementById('reportSelector');
+            dropdown.innerHTML = '';
+
+            const cumOpt = document.createElement('option');
+            cumOpt.value = 'cumulative';
+            cumOpt.text = `📊 Cumulative Averages (${testSession.reports.length} Tests)`;
+            dropdown.appendChild(cumOpt);
+
+            testSession.reports.forEach((rep, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.text = `📄 Test Report: ${rep.date} (Batch ${rep.batch})`;
+                dropdown.appendChild(opt);
+            });
+
+            dropdown.value = selectedViewIndex;
+        }
+
+        function handleReportSelectionChange(val) {
+            selectedViewIndex = val === 'cumulative' ? 'cumulative' : parseInt(val, 10);
+            initDashboard();
+        }
+
+        function getActiveStudentsData() {
+            if (selectedViewIndex === 'cumulative') {
+                const studentMap = {};
+                testSession.reports.forEach(rep => {
+                    rep.students.forEach(s => {
+                        if (!studentMap[s.stuid]) {
+                            studentMap[s.stuid] = {
+                                stuid: s.stuid,
+                                status: s.status,
+                                testsTaken: 0,
+                                sumPhysics: 0,
+                                sumChem: 0,
+                                sumMath: 0,
+                                sumTotal: 0,
+                                sumRank: 0
+                            };
+                        }
+                        if (s.status === 'P') {
+                            studentMap[s.stuid].testsTaken += 1;
+                            studentMap[s.stuid].sumPhysics += s.physics.total;
+                            studentMap[s.stuid].sumChem += s.chemistry.total;
+                            studentMap[s.stuid].sumMath += s.math.total;
+                            studentMap[s.stuid].sumTotal += s.totalScore;
+                            if (s.rank) studentMap[s.stuid].sumRank += s.rank;
+                        }
+                    });
+                });
+
+                return Object.values(studentMap).map(item => {
+                    const t = item.testsTaken || 1;
+                    return {
+                        stuid: item.stuid,
+                        status: item.testsTaken > 0 ? 'P' : 'A',
+                        physics: { total: parseFloat((item.sumPhysics / t).toFixed(1)) },
+                        chemistry: { total: parseFloat((item.sumChem / t).toFixed(1)) },
+                        math: { total: parseFloat((item.sumMath / t).toFixed(1)) },
+                        totalScore: parseFloat((item.sumTotal / t).toFixed(1)),
+                        percentage: parseFloat(((item.sumTotal / t) / 3).toFixed(2)),
+                        // Raw decimal average rank calculation
+                        rank: item.testsTaken > 0 ? parseFloat((item.sumRank / item.testsTaken).toFixed(1)) : null
+                    };
+                });
+            } else {
+                const targetReport = testSession.reports[selectedViewIndex] || testSession.reports[0];
+                return targetReport.students;
+            }
+        }
+
+        function initDashboard() {
+            const numReports = testSession.reports.length;
+            document.getElementById('headerSubtitle').innerText = `Batch: 10N | Total Tests Loaded: ${numReports}`;
+            
+            if (selectedViewIndex === 'cumulative') {
+                document.getElementById('activeReportLabel').innerText = `Cumulative Averages Across ${numReports} Tests`;
+            } else {
+                const activeRep = testSession.reports[selectedViewIndex];
+                document.getElementById('activeReportLabel').innerText = `Individual Test Date ${activeRep.date}`;
+            }
+
+            updateMetrics();
+            populateStudentDropdown();
+            renderTable(currentActiveTab);
+            renderDistributionChart();
+        }
+
+        function updateMetrics() {
+            const students = getActiveStudentsData();
+            const totalReg = students.length;
+            const presentStudents = students.filter(s => s.status === 'P');
+            const attendancePct = totalReg ? Math.round((presentStudents.length / totalReg) * 100) : 0;
+
+            const scores = presentStudents.map(s => s.totalScore);
+            const highest = scores.length ? Math.max(...scores, 0) : 0;
+            const sumScores = scores.reduce((a, b) => a + b, 0);
+            const avgScore = presentStudents.length ? (sumScores / presentStudents.length).toFixed(1) : 0;
+
+            document.getElementById('metricTotalStudents').innerText = totalReg;
+            document.getElementById('metricBatchAvg').innerText = avgScore;
+            document.getElementById('metricHighestScore').innerText = highest;
+            document.getElementById('metricAttendance').innerText = `${presentStudents.length}/${totalReg}`;
+            document.getElementById('metricAttendancePct').innerText = `${attendancePct}%`;
+        }
+
+        function populateStudentDropdown() {
+            const select = document.getElementById('studentSelect');
+            select.innerHTML = '<option value="">-- Choose student ID --</option>';
+            
+            const students = getActiveStudentsData();
+            const sorted = [...students].sort((a, b) => a.stuid.localeCompare(b.stuid));
+            sorted.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.stuid;
+                opt.text = `${s.stuid} ${s.status === 'A' ? '(Absent)' : '- Score: ' + s.totalScore}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function inspectStudent(stuid) {
+            const container = document.getElementById('studentCardDetails');
+            if (!stuid) {
+                container.innerHTML = `
+                    <div class="text-center text-slate-500 text-sm">
+                        <i class="fa-solid fa-user-graduate text-2xl mb-2 block opacity-40"></i>
+                        Select a student to view sectional scores.
+                    </div>
+                `;
+                return;
+            }
+
+            const students = getActiveStudentsData();
+            const student = students.find(s => s.stuid === stuid);
+            if (!student) return;
+
+            container.innerHTML = `
+                <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                    <div>
+                        <span class="text-xs text-slate-400 uppercase tracking-wider">Student ID</span>
+                        <h4 class="text-base font-bold text-white">${student.stuid}</h4>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 uppercase tracking-wider">${selectedViewIndex === 'cumulative' ? 'Raw Avg Rank' : 'Rank'}</span>
+                        <div class="text-base font-extrabold text-indigo-400">#${student.rank !== null ? student.rank : 'N/A'}</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 text-center pt-1">
+                    <div class="bg-slate-800/80 p-2 rounded-lg border border-slate-700/40">
+                        <span class="text-[10px] text-slate-400 uppercase block font-semibold">Physics</span>
+                        <span class="text-sm font-bold text-white">${student.physics.total}</span>
+                    </div>
+                    <div class="bg-slate-800/80 p-2 rounded-lg border border-slate-700/40">
+                        <span class="text-[10px] text-slate-400 uppercase block font-semibold">Chemistry</span>
+                        <span class="text-sm font-bold text-white">${student.chemistry.total}</span>
+                    </div>
+                    <div class="bg-slate-800/80 p-2 rounded-lg border border-slate-700/40">
+                        <span class="text-[10px] text-slate-400 uppercase block font-semibold">Math</span>
+                        <span class="text-sm font-bold text-white">${student.math.total}</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center bg-indigo-500/10 border border-indigo-500/20 px-3 py-2 rounded-lg">
+                    <span class="text-xs font-semibold text-indigo-300">${selectedViewIndex === 'cumulative' ? 'Mean Total Score' : 'Total Score'}</span>
+                    <span class="text-sm font-extrabold text-white">${student.totalScore} <span class="text-xs text-slate-400">/ 300</span></span>
+                </div>
+            `;
+        }
+
+        function switchTab(tabKey) {
+            currentActiveTab = tabKey;
+            document.querySelectorAll('.leaderboard-tab').forEach(btn => {
+                btn.className = "leaderboard-tab flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition text-slate-400 hover:text-white";
+            });
+            document.getElementById(`tab-${tabKey}`).className = "leaderboard-tab flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition bg-indigo-600 text-white shadow";
+            
+            renderTable(tabKey);
+        }
+
+        function renderTable(tabKey) {
+            const headerRow = document.getElementById('tableHeaderRow');
+            const absenteesFooter = document.getElementById('absenteesFooter');
+
+            let students = getActiveStudentsData();
+            let presentStudents = students.filter(s => s.status === 'P');
+            let absentStudents = students.filter(s => s.status === 'A');
+
+            if (tabKey === 'overall') {
+                presentStudents.sort((a, b) => b.totalScore - a.totalScore);
+
+                const rankColTitle = selectedViewIndex === 'cumulative' ? 'Mean Rank' : 'Rank';
+
+                headerRow.innerHTML = `
+                    <th class="px-6 py-3 font-semibold">${rankColTitle}</th>
+                    <th class="px-6 py-3 font-semibold">Student ID</th>
+                    <th class="px-6 py-3 font-semibold text-center">Physics ${selectedViewIndex === 'cumulative' ? 'Avg' : 'Score'}</th>
+                    <th class="px-6 py-3 font-semibold text-center">Chemistry ${selectedViewIndex === 'cumulative' ? 'Avg' : 'Score'}</th>
+                    <th class="px-6 py-3 font-semibold text-center">Math ${selectedViewIndex === 'cumulative' ? 'Avg' : 'Score'}</th>
+                    <th class="px-6 py-3 font-semibold text-right">Total Score (300)</th>
+                    <th class="px-6 py-3 font-semibold text-right">Percentage</th>
+                `;
+            } else {
+                presentStudents.sort((a, b) => b[tabKey].total - a[tabKey].total);
+
+                headerRow.innerHTML = `
+                    <th class="px-6 py-3 font-semibold">Sub Rank</th>
+                    <th class="px-6 py-3 font-semibold">Student ID</th>
+                    <th class="px-6 py-3 font-semibold text-right">${tabKey.toUpperCase()} ${selectedViewIndex === 'cumulative' ? 'Avg Score' : 'Score'}</th>
+                    <th class="px-6 py-3 font-semibold text-right">Overall Total</th>
+                `;
+            }
+
+            window.currentRenderedStudents = presentStudents;
+            buildTableRows(presentStudents, tabKey);
+
+            if (absentStudents.length > 0) {
+                const absentIds = absentStudents.map(s => s.stuid).join(', ');
+                absenteesFooter.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> <span><strong>Inactive / Absent:</strong> ${absentIds}</span>`;
+                absenteesFooter.style.display = "flex";
+            } else {
+                absenteesFooter.style.display = "none";
+            }
+        }
+
+        function buildTableRows(students, tabKey) {
+            const body = document.getElementById('tableBody');
+            body.innerHTML = '';
+
+            if (students.length === 0) {
+                body.innerHTML = `<tr><td colspan="7" class="px-6 py-8 text-center text-slate-500">No student records found.</td></tr>`;
+                return;
+            }
+
+            students.forEach((s, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-700/30 transition border-b border-slate-700/40";
+
+                if (tabKey === 'overall') {
+                    let displayRank = selectedViewIndex === 'cumulative' ? `#${s.rank}` : `#${idx + 1}`;
+                    let rankBadge = `<span class="font-bold text-white">${displayRank}</span>`;
+                    if (idx === 0 && selectedViewIndex !== 'cumulative') {
+                        rankBadge = `<span class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold border border-amber-500/30"><i class="fa-solid fa-crown mr-1"></i> #1</span>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td class="px-6 py-4">${rankBadge}</td>
+                        <td class="px-6 py-4 font-mono font-bold text-indigo-400">${s.stuid}</td>
+                        <td class="px-6 py-4 text-center font-bold text-white">${s.physics.total}</td>
+                        <td class="px-6 py-4 text-center font-bold text-white">${s.chemistry.total}</td>
+                        <td class="px-6 py-4 text-center font-bold text-white">${s.math.total}</td>
+                        <td class="px-6 py-4 text-right font-extrabold text-white text-base">${s.totalScore}</td>
+                        <td class="px-6 py-4 text-right text-slate-300">${s.percentage}%</td>
+                    `;
+                } else {
+                    const subScore = s[tabKey].total;
+                    let rankBadge = `<span class="font-bold text-white">#${idx + 1}</span>`;
+                    if (idx === 0) rankBadge = `<span class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold border border-amber-500/30"><i class="fa-solid fa-crown mr-1"></i> #1</span>`;
+
+                    tr.innerHTML = `
+                        <td class="px-6 py-4">${rankBadge}</td>
+                        <td class="px-6 py-4 font-mono font-bold text-indigo-400">${s.stuid}</td>
+                        <td class="px-6 py-4 text-right font-extrabold text-white text-base">${subScore}</td>
+                        <td class="px-6 py-4 text-right text-slate-300">${s.totalScore} / 300</td>
+                    `;
+                }
+                body.appendChild(tr);
+            });
+        }
+
+        function filterTable() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const presentStudents = window.currentRenderedStudents || getActiveStudentsData().filter(s => s.status === 'P');
+            const filtered = presentStudents.filter(s => s.stuid.toLowerCase().includes(query));
+            buildTableRows(filtered, currentActiveTab);
+        }
+
+        function renderDistributionChart() {
+            const present = getActiveStudentsData().filter(s => s.status === 'P');
+            const ranges = { '0-50': 0, '51-100': 0, '101-150': 0, '151-200': 0, '201-250': 0, '251-300': 0 };
+
+            present.forEach(s => {
+                const sc = s.totalScore;
+                if (sc <= 50) ranges['0-50']++;
+                else if (sc <= 100) ranges['51-100']++;
+                else if (sc <= 150) ranges['101-150']++;
+                else if (sc <= 200) ranges['151-200']++;
+                else if (sc <= 250) ranges['201-250']++;
+                else ranges['251-300']++;
+            });
+
+            const ctx = document.getElementById('scoreDistributionChart').getContext('2d');
+            if (distChartInstance) distChartInstance.destroy();
+
+            distChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(ranges),
+                    datasets: [{
+                        label: 'Number of Students',
+                        data: Object.values(ranges),
+                        backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, color: '#94a3b8' },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function openImportModal() {
+            const template = {
+                batch: "10N",
+                date: "DD/MM/YYYY",
+                students: [
+                    { stuid: "NC256003", status: "P", physics: { total: 0 }, chemistry: { total: 0 }, math: { total: 0 }, totalScore: 0, rank: 1 }
+                ]
+            };
+            document.getElementById('jsonInputBox').value = JSON.stringify(template, null, 2);
+            document.getElementById('importModal').classList.remove('hidden');
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.add('hidden');
+        }
+
+        function applyImportedJSON() {
+            try {
+                const parsed = JSON.parse(document.getElementById('jsonInputBox').value);
+                if (!parsed.students || !Array.isArray(parsed.students)) {
+                    throw new Error("Invalid schema: missing 'students' array.");
+                }
+                testSession.reports.push(parsed);
+                selectedViewIndex = testSession.reports.length - 1;
+                updateReportDropdownOptions();
+                initDashboard();
+                closeImportModal();
+                alert("New test report successfully appended and added to selector!");
+            } catch (err) {
+                alert("Error parsing JSON: " + err.message);
+            }
+        }
+
+        function exportDataJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(testSession, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `JEE_MultiTest_Session_${testSession.reports[0].batch}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+    </script>
+</body>
+</html>
